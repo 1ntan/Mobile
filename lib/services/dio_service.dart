@@ -6,7 +6,7 @@ class DioService {
     final dio = Dio();
     try {
       final response = await dio.get(
-        'https://dummyjson.com/products',
+        'https://dummyjson.com/products', //link api
         onReceiveProgress: (received, total) {
           if (total != -1) {
             onProgress(received / total);
