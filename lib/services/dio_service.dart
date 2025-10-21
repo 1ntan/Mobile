@@ -1,27 +1,39 @@
 import 'package:dio/dio.dart';
 
 class DioService {
-  static Future<void> testDioPerformance() async {
-    final stopwatch = Stopwatch()..start();
-    print('🟣 [DIO] Memulai request...');
-
+  static Future<List<String>> fetchProductsWithProgress(
+      Function(double) onProgress) async {
+    final dio = Dio();
     try {
-      final dio = Dio(
-        BaseOptions(
-          validateStatus: (status) => status != null && status < 500,
-        ),
+      final response = await dio.get(
+        'https://dummyjson.com/products',
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            onProgress(received / total);
+          }
+        },
       );
 
-      // 🔹 Ganti API ke yang bebas tanpa API key
-      final response = await dio.get('https://jsonplaceholder.typicode.com/users');
+      final List products = response.data['products'];
+      return products.map<String>((p) => p['title'].toString()).toList();
+    } catch (e) {
+      print('❌ Dio Error: $e');
+      return [];
+    }
+  }
 
+  static Future<void> testDioPerformance() async {
+    final dio = Dio();
+    final stopwatch = Stopwatch()..start();
+    print('🟣 [DIO] Starting request...');
+    try {
+      final response = await dio.get('https://dummyjson.com/products');
       stopwatch.stop();
-
       print('==============================');
       print('🌐 DIO TEST RESULT');
       print('Status Code : ${response.statusCode}');
       print('Response Time: ${stopwatch.elapsedMilliseconds} ms');
-      print('Data Length : ${(response.data as List).length}');
+      print('Data Length  : ${response.data['products']?.length}');
       print('==============================');
     } catch (e) {
       stopwatch.stop();
