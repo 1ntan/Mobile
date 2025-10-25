@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../services/dio_service.dart';
+import '../services/http_service.dart';
 
-class DioLaundryController extends GetxController {
-  var produkLaundry = <String>[].obs;
-  var filteredProduk = <String>[].obs;
+class HttpLaundryController extends GetxController {
+  var produkLaundry = <Map<String, dynamic>>[].obs;
+  var filteredProduk = <Map<String, dynamic>>[].obs;
   var isLoading = false.obs;
   var downloadProgress = 0.0.obs;
   var searchQuery = ''.obs;
@@ -14,34 +14,34 @@ class DioLaundryController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // 🔹 Jalankan test runtime otomatis saat menu DioLaundry dibuka
-    DioService.testDioPerformance();
+    // 🔹 Jalankan tes runtime otomatis pas menu HTTP dibuka
+    HttpService.testHttpPerformance();
 
-    // 🔹 Jalankan fetch data + progress bar seperti biasa
-    fetchProductsWithProgress();
+    // 🔹 Ambil data produk untuk ditampilkan di UI
+    fetchProducts();
 
-    // 🔹 Listener untuk pencarian
+    // 🔹 Listener pencarian
     searchController.addListener(() {
       searchProduk(searchController.text);
     });
   }
 
-  Future<void> fetchProductsWithProgress() async {
+  Future<void> fetchProducts() async {
     isLoading.value = true;
-    final products = await DioService.fetchProductsWithProgress((progress) {
-      downloadProgress.value = progress;
-    });
+    final products = await HttpService.fetchProducts();
     produkLaundry.assignAll(products);
     filteredProduk.assignAll(products);
     isLoading.value = false;
-    downloadProgress.value = 0.0;
   }
 
   void searchProduk(String query) {
     searchQuery.value = query;
     filteredProduk.assignAll(
       produkLaundry
-          .where((p) => p.toLowerCase().contains(query.toLowerCase()))
+          .where((p) => p['nama']
+              .toString()
+              .toLowerCase()
+              .contains(query.toLowerCase()))
           .toList(),
     );
   }

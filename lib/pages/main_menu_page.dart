@@ -11,7 +11,6 @@ class MainMenuPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeController themeController = Get.find();
     return Scaffold(
-      // Background mengikuti tema otomatis
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Gangnam Laundry'),
@@ -31,7 +30,6 @@ class MainMenuPage extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            // Minimal tinggi = tinggi layar dikurangi AppBar
             minHeight: MediaQuery.of(context).size.height -
                 kToolbarHeight -
                 MediaQuery.of(context).padding.top,
@@ -39,8 +37,11 @@ class MainMenuPage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.local_laundry_service,
-                  color: Theme.of(context).colorScheme.primary, size: 120),
+              Icon(
+                Icons.local_laundry_service,
+                color: Theme.of(context).colorScheme.primary,
+                size: 120,
+              ),
               const SizedBox(height: 12),
               Text(
                 'Gangnam Laundry',
@@ -71,8 +72,10 @@ class MainMenuPage extends StatelessWidget {
                     );
                   },
                   icon: const Icon(Icons.http, color: Colors.white),
-                  label: const Text('Laundry HTTP',
-                      style: TextStyle(fontSize: 18, color: Colors.white)),
+                  label: const Text(
+                    'Laundry HTTP',
+                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -96,11 +99,14 @@ class MainMenuPage extends StatelessWidget {
                     );
                   },
                   icon: const Icon(Icons.cloud_download, color: Colors.white),
-                  label: const Text('Laundry DIO',
-                      style: TextStyle(fontSize: 18, color: Colors.white)),
+                  label: const Text(
+                    'Laundry DIO',
+                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+              // Teks info
               Text(
                 'Hasil pengukuran response time akan muncul di terminal (console).',
                 textAlign: TextAlign.center,

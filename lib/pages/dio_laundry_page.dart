@@ -4,31 +4,53 @@ import '../services/dio_service.dart';
 import '../controllers/dio_laundry_controller.dart';
 import 'product_detail_page.dart';
 
-class DioLaundryPage extends StatelessWidget {
+class DioLaundryPage extends StatefulWidget {
   const DioLaundryPage({super.key});
 
   @override
+  State<DioLaundryPage> createState() => _DioLaundryPageState();
+}
+
+class _DioLaundryPageState extends State<DioLaundryPage> {
+  late DioLaundryController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.put(DioLaundryController());
+    // Tes runtime otomatis saat page dibuka
+    DioService.testDioPerformance();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final controller = Get.put(DioLaundryController());
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? Colors.yellow : Colors.white;
+    final appBarColor = isDark ? Colors.grey[900] : Colors.lightBlue;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Laundry DIO'),
         centerTitle: true,
-        backgroundColor: Colors.lightBlue,
+        backgroundColor: appBarColor,
         actions: [
           IconButton(
-            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode, color: iconColor),
             onPressed: () {
               Get.changeThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
+              setState(() {}); // rebuild supaya ikon berubah
             },
+          ),
+          IconButton(
+            icon: Icon(Icons.speed, color: iconColor),
+            tooltip: 'Tes Speed',
+            onPressed: DioService.testDioPerformance,
           ),
         ],
       ),
       body: Column(
         children: [
-          _buildInfoBanner(context),
+          _buildInfoBanner(context, isDark),
 
           // 🔹 Progress bar untuk pitching
           _buildProgressIndicator(controller),
@@ -38,11 +60,10 @@ class DioLaundryPage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             child: ElevatedButton.icon(
               onPressed: controller.fetchProductsWithProgress,
-              icon: const Icon(Icons.cloud_download),
-              label: const Text('Fetch with Pitching'),
+              icon: Icon(Icons.cloud_download, color: iconColor),
+              label: Text('Fetch with Pitching', style: TextStyle(color: iconColor)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.lightBlue,
-                foregroundColor: Colors.white,
+                backgroundColor: isDark ? Colors.black87 : Colors.lightBlue,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -50,30 +71,28 @@ class DioLaundryPage extends StatelessWidget {
             ),
           ),
 
-          _buildSearchBar(controller),
-          Expanded(child: _buildProductGrid(controller)),
+          _buildSearchBar(controller, iconColor),
+          Expanded(child: _buildProductGrid(controller, isDark)),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: DioService.testDioPerformance,
-        icon: const Icon(Icons.speed),
-        label: const Text('Test Speed'),
       ),
     );
   }
 
-  Widget _buildInfoBanner(BuildContext context) {
+  Widget _buildInfoBanner(BuildContext context, bool isDark) {
     return Container(
       padding: const EdgeInsets.all(12),
-      color: Colors.blue.withOpacity(0.1),
+      color: isDark ? Colors.grey.shade800 : Colors.blue.withOpacity(0.1),
       child: Row(
-        children: const [
-          Icon(Icons.info_outline, size: 18, color: Colors.blue),
-          SizedBox(width: 8),
+        children: [
+          Icon(Icons.info_outline, size: 18, color: isDark ? Colors.yellow : Colors.blue),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               'Menampilkan progress pitching (download tracking) menggunakan Dio',
-              style: TextStyle(fontSize: 12, color: Colors.black87),
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
             ),
           ),
         ],
@@ -103,7 +122,7 @@ class DioLaundryPage extends StatelessWidget {
     });
   }
 
-  Widget _buildSearchBar(DioLaundryController controller) {
+  Widget _buildSearchBar(DioLaundryController controller, Color iconColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: TextField(
@@ -111,11 +130,11 @@ class DioLaundryPage extends StatelessWidget {
         onChanged: controller.searchProduk,
         decoration: InputDecoration(
           hintText: 'Cari produk laundry...',
-          prefixIcon: const Icon(Icons.search),
+          prefixIcon: Icon(Icons.search, color: iconColor),
           suffixIcon: Obx(() {
             if (controller.searchQuery.value.isNotEmpty) {
               return IconButton(
-                icon: const Icon(Icons.clear),
+                icon: Icon(Icons.clear, color: iconColor),
                 onPressed: controller.clearSearch,
               );
             }
@@ -129,7 +148,7 @@ class DioLaundryPage extends StatelessWidget {
     );
   }
 
-  Widget _buildProductGrid(DioLaundryController controller) {
+  Widget _buildProductGrid(DioLaundryController controller, bool isDark) {
     return Obx(() {
       if (controller.isLoading.value && controller.filteredProduk.isEmpty) {
         return const Center(child: CircularProgressIndicator());
@@ -172,18 +191,23 @@ class DioLaundryPage extends StatelessWidget {
                   );
                 },
                 child: Card(
-                  color: Colors.lightBlue.shade100,
+                  color: isDark
+                      ? Colors.grey.shade800
+                      : Colors.lightBlue.shade100,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.local_laundry_service, size: 50),
+                      Icon(Icons.local_laundry_service,
+                          size: 50, color: isDark ? Colors.yellow : Colors.blueGrey.shade700),
                       const SizedBox(height: 10),
                       Text(product,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: isDark ? Colors.yellow : Colors.black87)),
                     ],
                   ),
                 ),
