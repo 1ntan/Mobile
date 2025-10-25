@@ -2,7 +2,15 @@ import 'package:flutter/material.dart';
 
 class ProductDetailPage extends StatelessWidget {
   final String productName;
-  const ProductDetailPage({super.key, required this.productName});
+  final String? imageUrl;
+  final String? description; // ✅ Tambahan deskripsi (opsional)
+
+  const ProductDetailPage({
+    super.key,
+    required this.productName,
+    this.imageUrl,
+    this.description, // ✅ Tambahkan di konstruktor
+  });
 
   @override
   Widget build(BuildContext context) {

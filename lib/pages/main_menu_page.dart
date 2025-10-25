@@ -3,9 +3,18 @@ import 'package:get/get.dart';
 import '../controllers/theme_controller.dart';
 import 'http_laundry_page.dart';
 import 'dio_laundry_page.dart';
+import 'async_laundry_page.dart'; 
 
-class MainMenuPage extends StatelessWidget {
+class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
+
+  @override
+  State<MainMenuPage> createState() => _MainMenuPageState();
+}
+
+class _MainMenuPageState extends State<MainMenuPage> {
+  final ThemeController themeController = Get.find();
+  bool showAsyncOptions = false; // 👈 untuk menampilkan tombol turunan Async
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +115,79 @@ class MainMenuPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              // Teks info
+
+              // ======================
+              // Tombol: Async (baru)
+              // ======================
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.deepPurple,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      showAsyncOptions = !showAsyncOptions;
+                    });
+                  },
+                  icon: const Icon(Icons.bolt, color: Colors.white),
+                  label: const Text('Async',
+                      style: TextStyle(fontSize: 18, color: Colors.white)),
+                ),
+              ),
+
+              // ======================
+              // Tombol turunan Async
+              // ======================
+              if (showAsyncOptions) ...[
+                const SizedBox(height: 12),
+                // Sync–Await
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purpleAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const AsyncLaundryPage(useAsyncAwait: true),
+                      ),
+                    );
+                  },
+                  child: const Text('Sync–Await'),
+                ),
+                const SizedBox(height: 8),
+
+                // Callback Chaining
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purpleAccent.shade100,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const AsyncLaundryPage(useAsyncAwait: false),
+                      ),
+                    );
+                  },
+                  child: const Text('Callback Chaining'),
+                ),
+              ],
+
+              const SizedBox(height: 24),
               Text(
                 'Hasil pengukuran response time akan muncul di terminal (console).',
                 textAlign: TextAlign.center,
