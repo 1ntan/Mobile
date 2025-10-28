@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../services/http_service.dart';
-import 'product_detail_page.dart'; // halaman detail produk
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'product_detail_page.dart'; // ✅ pastikan file ini ada di folder yang sama
 
 class AsyncLaundryPage extends StatefulWidget {
-  final bool useAsyncAwait; // true = async–await, false = callback chaining
+  final bool useAsyncAwait;
 
   const AsyncLaundryPage({super.key, required this.useAsyncAwait});
 
@@ -14,10 +15,57 @@ class AsyncLaundryPage extends StatefulWidget {
 class _AsyncLaundryPageState extends State<AsyncLaundryPage> {
   bool isLoading = false;
   String errorMessage = '';
-  List<Map<String, dynamic>> produkList = [];
+  List<dynamic> produkList = [];
+
+  double? suhuSekarang;
+  String? rekomendasiLayanan;
+  int? _tappedIndex;
 
   // ======================================================
-  // Versi async–await
+  // API LAUNDRY (produk)
+  // ======================================================
+  Future<List<dynamic>> fetchLaundryData() async {
+    final response = await http.get(
+      Uri.parse('https://68fc553a96f6ff19b9f4d297.mockapi.io/api/v1/layanan'),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Gagal mengambil data laundry');
+    }
+  }
+
+  // ======================================================
+  // API CUACA
+  // ======================================================
+  Future<Map<String, dynamic>> fetchWeatherData() async {
+    final url = Uri.parse(
+        'https://api.open-meteo.com/v1/forecast?latitude=-6.2&longitude=106.8&current=temperature_2m');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Gagal mengambil data cuaca');
+    }
+  }
+
+  // ======================================================
+  // FUNGSI REKOMENDASI (berdasarkan suhu dari API cuaca)
+  // ======================================================
+  String getRecommendation(double suhu, List<dynamic> layanan) {
+    if (suhu > 30) {
+      return 'Cuaca panas 🌤️ → Cuci & Keringkan cepat';
+    } else if (suhu > 25) {
+      return 'Cuaca hangat ☀️ → Gunakan layanan Setrika Saja';
+    } else if (suhu > 20) {
+      return 'Cuaca sejuk 🌥️ → Gunakan Cuci Lipat';
+    } else {
+      return 'Cuaca dingin 🌧️ → Gunakan Cuci Selimut';
+    }
+  }
+
+  // ======================================================
+  // Async–await version (API bertingkat)
   // ======================================================
   Future<void> _loadDataAsyncAwait() async {
     setState(() {
@@ -27,12 +75,24 @@ class _AsyncLaundryPageState extends State<AsyncLaundryPage> {
 
     final stopwatch = Stopwatch()..start();
     try {
-      final data = await HttpService.fetchProducts();
+      // 1️⃣ Ambil data laundry
+      final dataLaundry = await fetchLaundryData();
+
+      // 2️⃣ Setelah itu ambil data cuaca
+      final cuaca = await fetchWeatherData();
+
+      // 3️⃣ Ambil suhu dan buat rekomendasi
+      final suhu = cuaca['current']['temperature_2m'];
+      final rekom = getRecommendation(suhu.toDouble(), dataLaundry);
+
+      // 4️⃣ Simpan ke state agar tampil di layar
       setState(() {
-        produkList = data.take(15).toList();
+        produkList = dataLaundry;
+        suhuSekarang = suhu;
+        rekomendasiLayanan = rekom;
       });
 
-      print('✅ [Async–Await] Waktu respon: ${stopwatch.elapsedMilliseconds} ms');
+      print('✅ [Async–Await] Total waktu: ${stopwatch.elapsedMilliseconds} ms');
     } catch (e) {
       setState(() {
         errorMessage = 'Terjadi error: $e';
@@ -44,7 +104,7 @@ class _AsyncLaundryPageState extends State<AsyncLaundryPage> {
   }
 
   // ======================================================
-  // Versi callback chaining
+  // Callback chaining version (API bertingkat)
   // ======================================================
   void _loadDataCallback() {
     setState(() {
@@ -53,16 +113,30 @@ class _AsyncLaundryPageState extends State<AsyncLaundryPage> {
     });
 
     final stopwatch = Stopwatch()..start();
-    HttpService.fetchProducts().then((data) {
-      setState(() {
-        produkList = data.take(15).toList();
-        isLoading = false;
-      });
 
-      print('✅ [Callback] Waktu respon: ${stopwatch.elapsedMilliseconds} ms');
+    fetchLaundryData().then((dataLaundry) {
+      // lanjut ke API cuaca
+      fetchWeatherData().then((cuaca) {
+        final suhu = cuaca['current']['temperature_2m'];
+        final rekom = getRecommendation(suhu.toDouble(), dataLaundry);
+
+        setState(() {
+          produkList = dataLaundry;
+          suhuSekarang = suhu;
+          rekomendasiLayanan = rekom;
+          isLoading = false;
+        });
+
+        print('✅ [Callback] Total waktu: ${stopwatch.elapsedMilliseconds} ms');
+      }).catchError((e) {
+        setState(() {
+          errorMessage = 'Error cuaca: $e';
+          isLoading = false;
+        });
+      });
     }).catchError((e) {
       setState(() {
-        errorMessage = 'Terjadi error: $e';
+        errorMessage = 'Error laundry: $e';
         isLoading = false;
       });
     });
@@ -71,16 +145,13 @@ class _AsyncLaundryPageState extends State<AsyncLaundryPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.useAsyncAwait) {
-      _loadDataAsyncAwait();
-    } else {
-      _loadDataCallback();
-    }
+    widget.useAsyncAwait ? _loadDataAsyncAwait() : _loadDataCallback();
   }
 
   @override
   Widget build(BuildContext context) {
     final mode = widget.useAsyncAwait ? 'Async–Await' : 'Callback Chaining';
+    int crossAxisCount = (MediaQuery.of(context).size.width ~/ 180).clamp(2, 4);
 
     return Scaffold(
       appBar: AppBar(
@@ -91,20 +162,44 @@ class _AsyncLaundryPageState extends State<AsyncLaundryPage> {
       body: Column(
         children: [
           _buildInfoBanner(mode),
+          if (suhuSekarang != null && rekomendasiLayanan != null)
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                children: [
+                  Text(
+                    '🌡️ Suhu Saat Ini: ${suhuSekarang!.toStringAsFixed(1)}°C',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '💡 Rekomendasi: $rekomendasiLayanan',
+                    style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: CircularProgressIndicator(color: Colors.lightBlue))
                 : errorMessage.isNotEmpty
                     ? Center(child: Text(errorMessage))
                     : produkList.isEmpty
-                        ? const Center(child: Text('Belum ada data produk.'))
-                        : _buildGridProduk(),
+                        ? const Center(child: Text('Belum ada data layanan.'))
+                        : _buildGridProduk(crossAxisCount),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed:
-            widget.useAsyncAwait ? _loadDataAsyncAwait : _loadDataCallback,
+        onPressed: widget.useAsyncAwait
+            ? _loadDataAsyncAwait
+            : _loadDataCallback,
         icon: const Icon(Icons.refresh),
         label: const Text('Muat Ulang'),
       ),
@@ -121,7 +216,7 @@ class _AsyncLaundryPageState extends State<AsyncLaundryPage> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Menampilkan hasil dengan pendekatan $mode',
+              'Menampilkan hasil dari dua API (Laundry + Cuaca) menggunakan $mode',
               style: const TextStyle(fontSize: 12, color: Colors.black87),
             ),
           ),
@@ -130,66 +225,95 @@ class _AsyncLaundryPageState extends State<AsyncLaundryPage> {
     );
   }
 
-  Widget _buildGridProduk() {
+  Widget _buildGridProduk(int crossAxisCount) {
     return GridView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: produkList.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
         childAspectRatio: 3 / 4,
       ),
       itemBuilder: (context, index) {
         final produk = produkList[index];
-        final nama = produk['nama']?.toString() ?? 'Produk tanpa nama';
-        final deskripsi = (produk['deskripsi'] != null &&
-                produk['deskripsi'].toString().isNotEmpty)
-            ? produk['deskripsi'].toString()
-            : 'Tidak ada deskripsi untuk produk ini.';
-        final harga = produk['harga'] ?? 0;
-        final durasi = produk['durasi'] ?? '-';
+        final bool isTapped = _tappedIndex == index;
+
+        final nama = produk['nama'] ?? 'Tanpa nama';
+        final deskripsi = produk['deskripsi'] ?? 'Tidak ada deskripsi';
+        final id = produk['id'].toString();
 
         return GestureDetector(
-          onTap: () {
+          onTapDown: (_) => setState(() => _tappedIndex = index),
+          onTapUp: (_) {
+            Future.delayed(const Duration(milliseconds: 150),
+                () => setState(() => _tappedIndex = null));
+
+            // ✅ Navigasi ke halaman detail
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => ProductDetailPage(
+              PageRouteBuilder(
+                transitionDuration: const Duration(milliseconds: 400),
+                pageBuilder: (context, animation, secondaryAnimation) =>
+                    ProductDetailPage(
                   productName: nama,
                   description: deskripsi,
                 ),
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) {
+                  final fade = CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  );
+                  return FadeTransition(opacity: fade, child: child);
+                },
               ),
             );
           },
-          child: Card(
-            color: Colors.lightBlue.shade100,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          onTapCancel: () => setState(() => _tappedIndex = null),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            transform: Matrix4.identity()..scale(isTapped ? 1.05 : 1.0),
+            decoration: BoxDecoration(
+              color: isTapped
+                  ? Colors.lightBlue.shade300
+                  : Colors.lightBlue.shade100,
+              borderRadius: BorderRadius.circular(isTapped ? 20 : 16),
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.local_laundry_service, size: 50),
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    nama,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+                Hero(
+                  tag: id,
+                  child: Icon(
+                    Icons.local_laundry_service,
+                    size: isTapped ? 60 : 50,
+                    color: isTapped ? Colors.white : Colors.blueGrey.shade700,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 10),
                 Text(
-                  "Rp$harga ($durasi)",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.blueGrey,
+                  nama,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: isTapped ? 18 : 16,
+                    color: isTapped ? Colors.white : Colors.black87,
+                  ),
+                ),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Text(
+                    deskripsi,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isTapped ? Colors.white70 : Colors.black54,
+                    ),
                   ),
                 ),
               ],
